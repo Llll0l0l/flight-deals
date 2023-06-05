@@ -1,43 +1,26 @@
-import requests
-from flight_search import FlightSearch
+from datetime import datetime, timedelta
 from data_manager import DataManager
-from pprint import pprint
+from flight_search import FlightSearch
 
-#This file will need to use the DataManager,FlightSearch, FlightData, NotificationManager classes to achieve the program requirements.
+data_manager = DataManager()
+sheet_data = data_manager.get_destination_data()
+flight_search = FlightSearch()
 
-flight_deals_endpoint = "https://api.sheety.co/446e0bfe88c9e058230f083f6e7edeee/copyOfFlightDeals/prices"
+ORIGIN_CITY_IATA = "MOW"
 
-response = requests.get(url=flight_deals_endpoint)
+if sheet_data[0]["iataCode"] == "":
+    for row in sheet_data:
+        row["iataCode"] = flight_search.get_destination_code(row["city"])
+    data_manager.destination_data = sheet_data
+    data_manager.update_destination_codes()
 
-# prices
-sheet_data = response.json()["prices"]
+tomorrow = datetime.now() + timedelta(days=1)
+six_month_from_today = datetime.now() + timedelta(days=(6 * 30))
 
-for data in sheet_data:
-    
-    city = data["city"]
-
-    # get the iata code from flight_Search
-    test = FlightSearch(city)
-    iata = test.return_iata()
-
-    # get the iata code for each city
-    endpoint_iata = "https://api.tequila.kiwi.com/locations/query"
-    
-    API_KEY = "YI0eE72GWPacazqUJAktNNxJvXjwoONc"
-    params = {
-        "term": city,
-    }
-
-    headers = {
-        "apikey": API_KEY,
-    }
-
-    iata_response = requests.get(url=endpoint_iata, headers=headers, params=params)
-    iata_response.raise_for_status()
-    city_iata = iata_response.json()["locations"][0]["code"]
-
-
-    # fill the sheet_data with iata
-    data["iataCode"] = iata
-    # fill the google sheet with iata
-    data_mng = DataManager(city_iata, data["id"])
+for destination in sheet_data:
+    flight = flight_search.check_flights(
+        ORIGIN_CITY_IATA,
+        destination["iataCode"],
+        from_time=tomorrow,
+        to_time=six_month_from_today
+    )
