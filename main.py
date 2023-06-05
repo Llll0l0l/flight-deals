@@ -19,8 +19,25 @@ for data in sheet_data:
     # get the iata code from flight_Search
     test = FlightSearch(city)
     iata = test.return_iata()
+
+    # get the iata code for each city
+    endpoint_iata = "https://api.tequila.kiwi.com/locations/query"
+    
+    API_KEY = "YI0eE72GWPacazqUJAktNNxJvXjwoONc"
+    params = {
+        "term": city,
+    }
+
+    headers = {
+        "apikey": API_KEY,
+    }
+
+    iata_response = requests.get(url=endpoint_iata, headers=headers, params=params)
+    iata_response.raise_for_status()
+    city_iata = iata_response.json()["locations"][0]["code"]
+
+
     # fill the sheet_data with iata
     data["iataCode"] = iata
-    pprint(data)
     # fill the google sheet with iata
-    data_mng = DataManager(data["iataCode"], data["id"])
+    data_mng = DataManager(city_iata, data["id"])
